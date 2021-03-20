@@ -269,8 +269,8 @@ class Joint(
     val globalPose1: Pose
 
     val compliance = 0.0
-    val rotDamping = 0.0
-    val posDamping = 0.0
+    var rotDamping = 0.0
+    var posDamping = 0.0
     val hasSwingLimits = false
     val minSwingAngle = -2.0 * Math.PI
     val maxSwingAngle = 2.0 * Math.PI
