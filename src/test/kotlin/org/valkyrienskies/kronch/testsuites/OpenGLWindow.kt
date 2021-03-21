@@ -123,7 +123,7 @@ class OpenGLWindow {
     // Renders a plane from (-.5, 0, -.5) to (.5, 0, .5)
     private fun renderPlane() {
         GL11.glBegin(GL11.GL_QUADS)
-        GL11.glColor3f(0.0f, 1.0f, 0.0f)
+        GL11.glColor3f(0.0f, 0.4f, 0.4f)
         GL11.glVertex3f(0.5f, 0.0f, 0.5f)
         GL11.glVertex3f(0.5f, 0.0f, -0.5f)
         GL11.glVertex3f(-0.5f, 0.0f, -0.5f)
@@ -142,10 +142,11 @@ class OpenGLWindow {
 
         // Remember the current time.
         val firstTime = System.nanoTime()
+        var lastTime = System.nanoTime()
         while (!GLFW.glfwWindowShouldClose(window)) {
             // Build time difference between this and first time.
             val thisTime = System.nanoTime()
-            val diff = (thisTime - firstTime) / 1E9f
+            val diff = (thisTime - lastTime) / 1E9f
 
             // Run physics
             physicsWorld.simulate(diff.toDouble())
@@ -173,6 +174,7 @@ class OpenGLWindow {
             run {
                 GL11.glPushMatrix()
                 GL11.glPushMatrix()
+                GL11.glTranslatef(0.0f, -1.0f, 0.0f)
                 GL11.glScalef(10.0f, 10.0f, 10.0f)
                 renderPlane()
                 GL11.glPopMatrix()
@@ -184,7 +186,7 @@ class OpenGLWindow {
                 GL11.glTranslatef(body.position.x().toFloat(), body.position.y().toFloat(), body.position.z().toFloat())
                 val axisAngle = AxisAngle4d().set(body.quaternion)
                 GL11.glRotatef(
-                    Math.toRadians(axisAngle.angle).toFloat(), axisAngle.x.toFloat(), axisAngle.y.toFloat(),
+                    Math.toDegrees(axisAngle.angle).toFloat(), axisAngle.x.toFloat(), axisAngle.y.toFloat(),
                     axisAngle.z.toFloat()
                 )
                 renderCube()
@@ -204,6 +206,8 @@ class OpenGLWindow {
             GL11.glPopMatrix()
             GLFW.glfwSwapBuffers(window)
             GLFW.glfwPollEvents()
+
+            lastTime = thisTime
         }
     }
 }
