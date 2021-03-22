@@ -1,5 +1,6 @@
 package org.valkyrienskies.kronch.testsuites
 
+import org.joml.AxisAngle4d
 import org.joml.Matrix4f
 import org.joml.Matrix4x3f
 import org.lwjgl.BufferUtils
@@ -10,6 +11,7 @@ import org.lwjgl.glfw.GLFWKeyCallback
 import org.lwjgl.opengl.GL
 import org.lwjgl.opengl.GL11
 import org.lwjgl.system.MemoryUtil
+import org.valkyrienskies.kronch.PhysicsWorld
 import java.nio.FloatBuffer
 
 /**
@@ -30,6 +32,8 @@ class OpenGLWindow {
 
     // FloatBuffer for transferring matrices to OpenGL
     private var floatBuffer: FloatBuffer = BufferUtils.createFloatBuffer(16)
+
+    private val physicsWorld = PhysicsWorld()
 
     fun run() {
         try {
@@ -119,7 +123,7 @@ class OpenGLWindow {
     // Renders a plane from (-.5, 0, -.5) to (.5, 0, .5)
     private fun renderPlane() {
         GL11.glBegin(GL11.GL_QUADS)
-        GL11.glColor3f(0.0f, 1.0f, 0.0f)
+        GL11.glColor3f(0.0f, 0.4f, 0.4f)
         GL11.glVertex3f(0.5f, 0.0f, 0.5f)
         GL11.glVertex3f(0.5f, 0.0f, -0.5f)
         GL11.glVertex3f(-0.5f, 0.0f, -0.5f)
@@ -138,10 +142,15 @@ class OpenGLWindow {
 
         // Remember the current time.
         val firstTime = System.nanoTime()
+        var lastTime = System.nanoTime()
         while (!GLFW.glfwWindowShouldClose(window)) {
             // Build time difference between this and first time.
             val thisTime = System.nanoTime()
-            val diff = (thisTime - firstTime) / 1E9f
+            val diff = (thisTime - lastTime) / 1E9f
+
+            // Run physics
+            physicsWorld.simulate(diff.toDouble())
+
             // Compute some rotation angle.
 
             // Make the viewport always fill the whole window.
@@ -165,12 +174,25 @@ class OpenGLWindow {
             run {
                 GL11.glPushMatrix()
                 GL11.glPushMatrix()
+                GL11.glTranslatef(0.0f, -1.0f, 0.0f)
                 GL11.glScalef(10.0f, 10.0f, 10.0f)
                 renderPlane()
                 GL11.glPopMatrix()
             }
 
             // Render cubes
+            for (body in physicsWorld.bodies) {
+                GL11.glPushMatrix()
+                GL11.glTranslatef(body.position.x().toFloat(), body.position.y().toFloat(), body.position.z().toFloat())
+                val axisAngle = AxisAngle4d().set(body.quaternion)
+                GL11.glRotatef(
+                    Math.toDegrees(axisAngle.angle).toFloat(), axisAngle.x.toFloat(), axisAngle.y.toFloat(),
+                    axisAngle.z.toFloat()
+                )
+                renderCube()
+                GL11.glPopMatrix()
+            }
+            /*
             for (x in -2..2) {
                 for (z in -2..2) {
                     GL11.glPushMatrix()
@@ -180,9 +202,12 @@ class OpenGLWindow {
                     GL11.glPopMatrix()
                 }
             }
+             */
             GL11.glPopMatrix()
             GLFW.glfwSwapBuffers(window)
             GLFW.glfwPollEvents()
+
+            lastTime = thisTime
         }
     }
 }

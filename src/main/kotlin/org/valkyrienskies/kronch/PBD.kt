@@ -129,8 +129,8 @@ class Body(_pose: Pose) {
         if (dq.w < 0.0)
             this.omega.set(-this.omega.x, -this.omega.y, -this.omega.z)
 
-        // this.omega.multiplyScalar(1.0 - 1.0 * dt)
-        // this.vel.multiplyScalar(1.0 - 1.0 * dt)
+        this.omega.mul(1.0 - 1.0 * dt)
+        this.vel.mul(1.0 - 1.0 * dt)
 
         this.position.set(this.pose.p)
         this.quaternion.set(this.pose.q)
@@ -269,8 +269,8 @@ class Joint(
     val globalPose1: Pose
 
     val compliance = 0.0
-    val rotDamping = 0.0
-    val posDamping = 0.0
+    var rotDamping = 0.0
+    var posDamping = 0.0
     val hasSwingLimits = false
     val minSwingAngle = -2.0 * Math.PI
     val maxSwingAngle = 2.0 * Math.PI
