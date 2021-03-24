@@ -445,39 +445,42 @@ fun simulate(bodies: List<Body>, joints: List<Joint>, timeStep: Double, numSubst
             if (!body.isStatic) body.integrate(dt, gravity)
         for (joint in joints)
             joint.solvePos(dt)
-        
+
         // Collide shapes with each other
-        run {
-            for (i in 1..bodies.size) {
-                for (j in i + 1..bodies.size) {
-                    val body0 = bodies[i - 1]
-                    val body1 = bodies[j - 1]
+        solveCollisions(bodies, dt)
 
-                    if (body0.isStatic and body1.isStatic) {
-                        continue // Both bodies are static, don't bother to collide with both of them
-                    }
-
-                    val idk = BoxBoxCollider.computeCollisionBetweenShapes(
-                        body0.collisionShape, body0.pose, body1.collisionShape, body1.pose
-                    )
-
-                    if (idk.colliding) {
-                        idk.collisionPoints.forEach {
-                            val corr = Vector3d(it.positionInSecondBody).sub(it.positionInFirstBody)
-                            if (corr.lengthSquared() > 1e-10) {
-                                applyBodyPairCorrection(
-                                    body0, body1, corr, 0.0, dt,
-                                    it.positionInFirstBody, it.positionInSecondBody, false
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-        }
         for (body in bodies)
             if (!body.isStatic) body.update(dt)
         for (joint in joints)
             joint.solveVel(dt)
+    }
+}
+
+private fun solveCollisions(bodies: List<Body>, dt: Double) {
+    for (i in 1..bodies.size) {
+        for (j in i + 1..bodies.size) {
+            val body0 = bodies[i - 1]
+            val body1 = bodies[j - 1]
+
+            if (body0.isStatic and body1.isStatic) {
+                continue // Both bodies are static, don't bother to collide with both of them
+            }
+
+            val collisionResult = BoxBoxCollider.computeCollisionBetweenShapes(
+                body0.collisionShape, body0.pose, body1.collisionShape, body1.pose
+            )
+
+            if (collisionResult.colliding) {
+                collisionResult.collisionPoints.forEach {
+                    val corr = Vector3d(it.positionInSecondBody).sub(it.positionInFirstBody)
+                    if (corr.lengthSquared() > 1e-10) {
+                        applyBodyPairCorrection(
+                            body0, body1, corr, 0.0, dt,
+                            it.positionInFirstBody, it.positionInSecondBody, false
+                        )
+                    }
+                }
+            }
+        }
     }
 }
