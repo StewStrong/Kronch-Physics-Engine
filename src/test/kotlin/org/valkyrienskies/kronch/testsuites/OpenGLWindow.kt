@@ -64,6 +64,11 @@ class OpenGLWindow {
                     if (key == GLFW.GLFW_KEY_ESCAPE && action == GLFW.GLFW_RELEASE) GLFW.glfwSetWindowShouldClose(
                         window, true
                     )
+                    if (key == GLFW.GLFW_KEY_UP) {
+                        for (body in physicsWorld.bodies) {
+                            body.vel.add(0.0, 10.0, 0.0)
+                        }
+                    }
                 }
             }.also { keyCallback = it }
         )

@@ -9,6 +9,7 @@ import org.valkyrienskies.kronch.collision.CollisionResult
 import org.valkyrienskies.kronch.collision.CollisionResultc
 import org.valkyrienskies.kronch.collision.NotCollidingException
 import org.valkyrienskies.kronch.collision.shapes.BoxCollisionShape
+import org.valkyrienskies.kronch.collision.shapes.boxPoints
 import kotlin.math.abs
 import kotlin.math.min
 
@@ -34,11 +35,11 @@ object BoxBoxCollider : Collider<BoxCollisionShape, BoxCollisionShape> {
         return CollisionResult(collisionPairs)
     }
 
-    private fun collideCubes(
+    private inline fun collideCubes(
         firstBodyCollisionShape: BoxCollisionShape, firstBodyPose: Pose, secondBodyCollisionShape: BoxCollisionShape,
         secondBodyPose: Pose, function: (Vector3d, Vector3d, Vector3d) -> Unit
     ) {
-        for (firstBoxVertex in firstBodyCollisionShape.boxPointsIterator()) {
+        for (firstBoxVertex in firstBodyCollisionShape.aabb.boxPoints()) {
             firstBodyPose.transform(firstBoxVertex)
             secondBodyPose.invTransform(firstBoxVertex)
             // Now [firstBoxVertex] is in the local coordinates of [secondBodyCollisionShape]
@@ -48,10 +49,7 @@ object BoxBoxCollider : Collider<BoxCollisionShape, BoxCollisionShape> {
                 val collisionDepth = pushPointOutOfAABB(firstBoxVertex, secondBodyCollisionShape.aabb, collisionNormal)
 
                 val firstCollisionPoint = Vector3d(firstBoxVertex)
-                val secondCollisionPoint = Vector3d(firstBoxVertex).add(
-                    collisionNormal.x() * collisionDepth, collisionNormal.y() * collisionDepth,
-                    collisionNormal.z() * collisionDepth
-                )
+                val secondCollisionPoint = Vector3d(firstBoxVertex).fma(collisionDepth, collisionNormal)
 
                 secondBodyPose.transform(firstCollisionPoint)
                 secondBodyPose.transform(secondCollisionPoint)
@@ -73,29 +71,17 @@ object BoxBoxCollider : Collider<BoxCollisionShape, BoxCollisionShape> {
         val pushPosZ = abs(aabb.maxZ() - point.z())
         val pushNegZ = abs(aabb.minZ() - point.z())
 
-        val minPushMag =
-            minOf6(pushPosX, pushNegX, pushPosY, pushNegY, pushPosZ, pushNegZ)
+        val minPushMag = minOf6(pushPosX, pushNegX, pushPosY, pushNegY, pushPosZ, pushNegZ)
 
         when (minPushMag) {
-            pushPosX -> {
-                outputNormal.set(1.0, 0.0, 0.0)
-            }
-            pushNegX -> {
-                outputNormal.set(-1.0, 0.0, 0.0)
-            }
-            pushPosY -> {
-                outputNormal.set(0.0, 1.0, 0.0)
-            }
-            pushNegY -> {
-                outputNormal.set(0.0, -1.0, 0.0)
-            }
-            pushPosZ -> {
-                outputNormal.set(0.0, 0.0, 1.0)
-            }
-            pushNegZ -> {
-                outputNormal.set(0.0, 0.0, -1.0)
-            }
+            pushPosX -> outputNormal.set(1.0, 0.0, 0.0)
+            pushNegX -> outputNormal.set(-1.0, 0.0, 0.0)
+            pushPosY -> outputNormal.set(0.0, 1.0, 0.0)
+            pushNegY -> outputNormal.set(0.0, -1.0, 0.0)
+            pushPosZ -> outputNormal.set(0.0, 0.0, 1.0)
+            pushNegZ -> outputNormal.set(0.0, 0.0, -1.0)
         }
+
         return minPushMag
     }
 
