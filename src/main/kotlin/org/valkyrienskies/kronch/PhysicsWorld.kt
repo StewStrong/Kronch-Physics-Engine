@@ -2,7 +2,9 @@ package org.valkyrienskies.kronch
 
 import org.joml.Quaterniond
 import org.joml.Vector3d
+import org.joml.primitives.AABBd
 import org.valkyrienskies.kronch.JointType.SPHERICAL
+import org.valkyrienskies.kronch.collision.shapes.BoxCollisionShape
 
 class PhysicsWorld {
     val bodies: MutableList<Body> = ArrayList()
@@ -12,19 +14,28 @@ class PhysicsWorld {
         // region Create bodies
         val boxSize = Vector3d(1.0, 1.0, 1.0)
 
-        val firstBoxPose = Pose(Vector3d(0.0, 3.0, 0.0), Quaterniond())
+        val firstBoxPose = Pose(Vector3d(0.0, 3.0, 2.0), Quaterniond())
         val firstBoxBody = Body(firstBoxPose)
         firstBoxBody.setBox(boxSize)
+        firstBoxBody.collisionShape = BoxCollisionShape(AABBd(-.5, -.5, -.5, .5, .5, .5))
 
-        val secondBoxPose = Pose(Vector3d(0.0, 2.0, 0.0), Quaterniond())
+        val secondBoxPose = Pose(Vector3d(.8, 1.0, 0.1), Quaterniond())
         val secondBoxBody = Body(secondBoxPose)
-        firstBoxBody.setBox(boxSize)
+        secondBoxBody.setBox(boxSize)
+        secondBoxBody.collisionShape = BoxCollisionShape(AABBd(-.5, -.5, -.5, .5, .5, .5))
 
-        val thirdBoxPose = Pose(Vector3d(0.0, 1.0, 0.0), Quaterniond())
+        val thirdBoxPose = Pose(Vector3d(0.1, 5.0, 0.2), Quaterniond())
         val thirdBoxBody = Body(thirdBoxPose)
         thirdBoxBody.setBox(boxSize)
+        thirdBoxBody.collisionShape = BoxCollisionShape(AABBd(-.5, -.5, -.5, .5, .5, .5))
 
-        thirdBoxBody.vel.set(10.0, 0.0, 0.0)
+        val groundPose = Pose()
+        val groundBody = Body(groundPose)
+        groundBody.setBox(boxSize)
+        groundBody.collisionShape = BoxCollisionShape(AABBd(-1000.0, -10.0, -1000.0, 1000.0, 0.0, 1000.0))
+        groundBody.isStatic = true
+
+        // thirdBoxBody.vel.set(10.0, 0.0, 0.0)
         // endregion
 
         // region Create joins
@@ -60,10 +71,11 @@ class PhysicsWorld {
         secondBoxToThirdBoxJoint.posDamping = jointPosDamping
 
         // endregion
-
+        bodies.add(groundBody)
         bodies.add(firstBoxBody)
         bodies.add(secondBoxBody)
         bodies.add(thirdBoxBody)
+
         joints.add(firstBoxToCeilingJoint)
         joints.add(firstBoxToSecondBoxJoint)
         joints.add(secondBoxToThirdBoxJoint)

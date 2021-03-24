@@ -27,6 +27,7 @@ data class BoxCollisionShape(val aabb: AABBdc) : CollisionShape {
                     6 -> temp.set(aabb.maxX(), aabb.maxY(), aabb.minZ())
                     7 -> temp.set(aabb.maxX(), aabb.maxY(), aabb.maxZ())
                 }
+                index++
                 return temp
             }
         }

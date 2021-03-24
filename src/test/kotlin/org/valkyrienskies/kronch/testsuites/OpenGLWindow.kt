@@ -149,7 +149,7 @@ class OpenGLWindow {
             val diff = (thisTime - lastTime) / 1E9f
 
             // Run physics
-            physicsWorld.simulate(diff.toDouble())
+            physicsWorld.simulate(.001) // diff.toDouble())
 
             // Compute some rotation angle.
 
@@ -174,7 +174,7 @@ class OpenGLWindow {
             run {
                 GL11.glPushMatrix()
                 GL11.glPushMatrix()
-                GL11.glTranslatef(0.0f, -1.0f, 0.0f)
+                // GL11.glTranslatef(0.0f, -1.0f, 0.0f)
                 GL11.glScalef(10.0f, 10.0f, 10.0f)
                 renderPlane()
                 GL11.glPopMatrix()
@@ -192,17 +192,7 @@ class OpenGLWindow {
                 renderCube()
                 GL11.glPopMatrix()
             }
-            /*
-            for (x in -2..2) {
-                for (z in -2..2) {
-                    GL11.glPushMatrix()
-                    GL11.glTranslatef(x * 2.0f, 0f, z * 2.0f)
-                    GL11.glRotatef(diff * 90.0f, 0.0f, 1.0f, 0.0f)
-                    renderCube()
-                    GL11.glPopMatrix()
-                }
-            }
-             */
+
             GL11.glPopMatrix()
             GLFW.glfwSwapBuffers(window)
             GLFW.glfwPollEvents()

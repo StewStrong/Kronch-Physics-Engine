@@ -2,6 +2,10 @@ package org.valkyrienskies.kronch
 
 import org.joml.Quaterniond
 import org.joml.Vector3d
+import org.joml.Vector3dc
+import org.joml.primitives.AABBd
+import org.valkyrienskies.kronch.collision.colliders.BoxBoxCollider
+import org.valkyrienskies.kronch.collision.shapes.BoxCollisionShape
 import kotlin.math.asin
 
 // pretty much one-for-one port of https://github.com/matthias-research/pages/blob/master/challenges/PBD.js
@@ -79,6 +83,11 @@ class Body(_pose: Pose) {
     val position = Vector3d(pose.p)
     val quaternion = Quaterniond(pose.q)
 
+    var isStatic = false
+
+    // Use a box shape by default
+    var collisionShape: BoxCollisionShape = BoxCollisionShape(AABBd(-.5, -.5, -.5, .5, .5, .5))
+
     fun setBox(size: Vector3d, density: Double = 1.0) {
         var mass = size.x * size.y * size.z * density
         val invMass = 1.0 / mass
@@ -144,7 +153,8 @@ class Body(_pose: Pose) {
         return vel
     }
 
-    fun getInverseMass(normal: Vector3d, pos: Vector3d? = null): Double {
+    fun getInverseMass(normal: Vector3dc, pos: Vector3dc? = null): Double {
+        if (isStatic) throw IllegalStateException("Cannot get inverse mass of a static body")
         val n = Vector3d()
         if (pos === null)
             n.set(normal)
@@ -161,15 +171,15 @@ class Body(_pose: Pose) {
         return w
     }
 
-    fun applyCorrection(corr: Vector3d, pos: Vector3d? = null, velocityLevel: Boolean = false) {
+    fun applyCorrection(corr: Vector3dc, pos: Vector3dc? = null, velocityLevel: Boolean = false) {
         val dq = Vector3d()
         if (pos === null)
             dq.set(corr)
         else {
             if (velocityLevel)
-                this.vel.add(corr.x * this.invMass, corr.y * this.invMass, corr.z * this.invMass)
+                this.vel.add(corr.x() * this.invMass, corr.y() * this.invMass, corr.z() * this.invMass)
             else
-                this.pose.p.add(corr.x * this.invMass, corr.y * this.invMass, corr.z * this.invMass)
+                this.pose.p.add(corr.x() * this.invMass, corr.y() * this.invMass, corr.z() * this.invMass)
             pos.sub(this.pose.p, dq)
             dq.cross(corr)
         }
@@ -188,7 +198,7 @@ class Body(_pose: Pose) {
 
 fun applyBodyPairCorrection(
     body0: Body?, body1: Body?, corr: Vector3d, compliance: Double,
-    dt: Double, pos0: Vector3d? = null, pos1: Vector3d? = null, velocityLevel: Boolean = false
+    dt: Double, pos0: Vector3dc? = null, pos1: Vector3dc? = null, velocityLevel: Boolean = false
 ) {
     val C = corr.length()
     if (C == 0.0)
@@ -197,8 +207,8 @@ fun applyBodyPairCorrection(
     val normal = Vector3d(corr)
     normal.normalize()
 
-    val w0 = body0?.getInverseMass(normal, pos0) ?: 0.0
-    val w1 = body1?.getInverseMass(normal, pos1) ?: 0.0
+    val w0 = if (body0 != null && !body0.isStatic) body0.getInverseMass(normal, pos0) else 0.0
+    val w1 = if (body1 != null && !body1.isStatic) body1.getInverseMass(normal, pos0) else 0.0
 
     val w = w0 + w1
     if (w == 0.0)
@@ -207,11 +217,11 @@ fun applyBodyPairCorrection(
     val lambda = -C / (w + compliance / dt / dt)
     normal.mul(-lambda)
 
-    if (body0 != null) {
+    if (body0 != null && !body0.isStatic) {
         body0.applyCorrection(normal, pos0, velocityLevel)
     }
 
-    if (body1 != null) {
+    if (body1 != null && !body1.isStatic) {
         normal.mul(-1.0)
         body1.applyCorrection(normal, pos1, velocityLevel)
     }
@@ -430,13 +440,43 @@ class Joint(
 fun simulate(bodies: List<Body>, joints: List<Joint>, timeStep: Double, numSubsteps: Int, gravity: Vector3d) {
     val dt = timeStep / numSubsteps
 
-    for (i in 0 until numSubsteps) {
+    for (step in 0 until numSubsteps) {
         for (body in bodies)
-            body.integrate(dt, gravity)
+            if (!body.isStatic) body.integrate(dt, gravity)
         for (joint in joints)
             joint.solvePos(dt)
+        
+        // Collide shapes with each other
+        run {
+            for (i in 1..bodies.size) {
+                for (j in i + 1..bodies.size) {
+                    val body0 = bodies[i - 1]
+                    val body1 = bodies[j - 1]
+
+                    if (body0.isStatic and body1.isStatic) {
+                        continue // Both bodies are static, don't bother to collide with both of them
+                    }
+
+                    val idk = BoxBoxCollider.computeCollisionBetweenShapes(
+                        body0.collisionShape, body0.pose, body1.collisionShape, body1.pose
+                    )
+
+                    if (idk.colliding) {
+                        idk.collisionPoints.forEach {
+                            val corr = Vector3d(it.positionInSecondBody).sub(it.positionInFirstBody)
+                            if (corr.lengthSquared() > 1e-10) {
+                                applyBodyPairCorrection(
+                                    body0, body1, corr, 0.0, dt,
+                                    it.positionInFirstBody, it.positionInSecondBody, false
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
         for (body in bodies)
-            body.update(dt)
+            if (!body.isStatic) body.update(dt)
         for (joint in joints)
             joint.solveVel(dt)
     }
