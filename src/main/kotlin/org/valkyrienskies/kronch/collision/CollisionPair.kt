@@ -8,5 +8,6 @@ import org.joml.Vector3dc
 class CollisionPair(
     override var positionInFirstBody: Vector3dc,
     override var positionInSecondBody: Vector3dc,
-    override var normal: Vector3dc
+    override var normal: Vector3dc,
+    override var depth: Double
 ) : CollisionPairc

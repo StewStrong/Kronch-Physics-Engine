@@ -23,8 +23,9 @@ class Pose(
 
     fun clone() = Pose(Vector3d(p), Quaterniond(q))
 
-    fun rotate(v: Vector3d) {
+    fun rotate(v: Vector3d): Vector3d {
         v.rotate(this.q)
+        return v
     }
 
     fun invRotate(v: Vector3d) {
@@ -32,14 +33,16 @@ class Pose(
         v.rotate(inv)
     }
 
-    fun transform(v: Vector3d) {
+    fun transform(v: Vector3d): Vector3d {
         v.rotate(this.q)
         v.add(this.p)
+        return v
     }
 
-    fun invTransform(v: Vector3d) {
+    fun invTransform(v: Vector3d): Vector3d {
         v.sub(this.p)
         this.invRotate(v)
+        return v
     }
 
     fun transformPose(pose: Pose) {
@@ -474,11 +477,13 @@ private fun solveCollisions(bodies: List<Body>, dt: Double) {
 
             if (collisionResult != null && collisionResult.colliding) {
                 collisionResult.collisionPoints.forEach {
-                    val corr = Vector3d(it.positionInSecondBody).sub(it.positionInFirstBody)
+                    val corr = it.normal.mul(it.depth, Vector3d())
+                    val body0PointPos = body0.pose.transform(Vector3d(it.positionInFirstBody))
+                    val body1PointPos = body1.pose.transform(Vector3d(it.positionInSecondBody))
                     if (corr.lengthSquared() > 1e-10) {
                         applyBodyPairCorrection(
                             body0, body1, corr, 0.0, dt,
-                            it.positionInFirstBody, it.positionInSecondBody, false
+                            body0PointPos, body1PointPos, false
                         )
                     }
                 }

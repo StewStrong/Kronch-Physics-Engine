@@ -2,6 +2,10 @@ package org.valkyrienskies.kronch.collision.shapes
 
 import org.joml.Vector3i
 import org.joml.Vector3ic
+import org.valkyrienskies.kronch.collision.shapes.VoxelShape.CollisionVoxelType.AIR
+import org.valkyrienskies.kronch.collision.shapes.VoxelShape.CollisionVoxelType.INTERIOR
+import org.valkyrienskies.kronch.collision.shapes.VoxelShape.CollisionVoxelType.PROXIMITY
+import org.valkyrienskies.kronch.collision.shapes.VoxelShape.CollisionVoxelType.SURFACE
 import org.valkyrienskies.kronch.collision.shapes.VoxelShape.VoxelType.EMPTY
 import org.valkyrienskies.kronch.collision.shapes.VoxelShape.VoxelType.FULL
 import kotlin.experimental.and
@@ -37,9 +41,8 @@ class VoxelShape(
         return (posX - gridMin.x()) + xLen * (posY - gridMin.y()) + xLen * yLen * (posZ - gridMin.z())
     }
 
-    private fun setVoxelType(pos: Vector3ic, newVoxelType: VoxelType): Boolean {
-        return setVoxelType(pos.x(), pos.y(), pos.z(), newVoxelType)
-    }
+    private fun setVoxelType(pos: Vector3ic, newVoxelType: VoxelType): Boolean =
+        setVoxelType(pos.x(), pos.y(), pos.z(), newVoxelType)
 
     private fun setVoxelType(posX: Int, posY: Int, posZ: Int, newVoxelType: VoxelType): Boolean {
         val prevVoxelType = getVoxelType(posX, posY, posZ)
@@ -76,7 +79,7 @@ class VoxelShape(
                         neighborOldCount - 1
                     }
 
-                    val neighborNewData = (neighborOldData and 0b00000001) or (neighborNewCount shl 1).toByte()
+                    val neighborNewData = (neighborOldData and 0b00000001.toByte()) or (neighborNewCount shl 1).toByte()
                     grid[neighborDataIndex] = neighborNewData
                 }
             }
@@ -95,7 +98,87 @@ class VoxelShape(
         }
     }
 
+    fun getCollisionVoxelType(pos: Vector3ic): CollisionVoxelType = getCollisionVoxelType(pos.x(), pos.y(), pos.z())
+
+    fun getCollisionVoxelType(posX: Int, posY: Int, posZ: Int): CollisionVoxelType {
+        if (!isPosInGrid(posX, posY, posZ)) return AIR
+        val index = toIndex(posX, posY, posZ)
+        val data = grid[index]
+        val isVoxelSet = (data and 0b00000001.toByte()) == 0b00000001.toByte()
+        val neighborVoxelCount = data.toInt() shr 1
+        return if (!isVoxelSet) {
+            if (neighborVoxelCount == 0) {
+                AIR
+            } else {
+                PROXIMITY
+            }
+        } else {
+            if (neighborVoxelCount != 26) {
+                SURFACE
+            } else {
+                INTERIOR
+            }
+        }
+    }
+
+    inline fun forEachAllowedNormal(
+        posX: Int, posY: Int, posZ: Int, function: (normalX: Double, normalY: Double, normalZ: Double) -> Unit
+    ) {
+        val voxelType = getCollisionVoxelType(posX, posY, posZ)
+        if (voxelType == AIR) {
+            return
+        }
+        forEachNormal { normalX: Int, normalY: Int, normalZ: Int ->
+            if (voxelType.canPush(getCollisionVoxelType(posX + normalX, posY + normalY, posZ + normalZ))) {
+                function(normalX.toDouble(), normalY.toDouble(), normalZ.toDouble())
+            }
+        }
+    }
+
+    inline fun forEachNormal(function: (normalX: Int, normalY: Int, normalZ: Int) -> Unit) {
+        for (i in 0 until 6) {
+            var normalX = 0
+            var normalY = 0
+            var normalZ = 0
+            when (i) {
+                0 -> normalX = 1
+                1 -> normalX = -1
+                2 -> normalY = 1
+                3 -> normalY = -1
+                4 -> normalZ = 1
+                5 -> normalZ = -1
+            }
+            function(normalX, normalY, normalZ)
+        }
+        // Equivalent to the following, but much smaller bytecode
+        /*
+        function(-1, 0, 0)
+        function(0, 1, 0)
+        function(0, -1, 0)
+        function(0, 0, 1)
+        function(0, 0, -1)
+         */
+    }
+
+    fun getSurfaceVoxels(): Collection<Vector3ic> {
+        val surfaceVoxels = ArrayList<Vector3ic>()
+        for (voxel in voxels) {
+            if (getCollisionVoxelType(voxel) == SURFACE) {
+                surfaceVoxels.add(voxel)
+            }
+        }
+        return surfaceVoxels
+    }
+
     enum class VoxelType {
         FULL, EMPTY
+    }
+
+    enum class CollisionVoxelType(val sortIndex: Int) {
+        AIR(0), PROXIMITY(1), SURFACE(2), INTERIOR(3);
+
+        fun canPush(otherType: CollisionVoxelType): Boolean {
+            return sortIndex > otherType.sortIndex
+        }
     }
 }

@@ -176,16 +176,6 @@ class OpenGLWindow {
             // Load the view matrix
             GL11.glLoadMatrixf(viewMatrix.get4x4(floatBuffer))
 
-            // Render the ground plane
-            run {
-                GL11.glPushMatrix()
-                GL11.glPushMatrix()
-                // GL11.glTranslatef(0.0f, -1.0f, 0.0f)
-                GL11.glScalef(10.0f, 10.0f, 10.0f)
-                renderPlane()
-                GL11.glPopMatrix()
-            }
-
             // Render cubes
             for (body in physicsWorld.bodies) {
                 GL11.glPushMatrix()
