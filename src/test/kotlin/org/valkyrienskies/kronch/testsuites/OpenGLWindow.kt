@@ -12,6 +12,7 @@ import org.lwjgl.opengl.GL
 import org.lwjgl.opengl.GL11
 import org.lwjgl.system.MemoryUtil
 import org.valkyrienskies.kronch.PhysicsWorld
+import org.valkyrienskies.kronch.collision.shapes.VoxelShape
 import java.nio.FloatBuffer
 
 /**
@@ -194,7 +195,15 @@ class OpenGLWindow {
                     Math.toDegrees(axisAngle.angle).toFloat(), axisAngle.x.toFloat(), axisAngle.y.toFloat(),
                     axisAngle.z.toFloat()
                 )
-                renderCube()
+                val bodyShape = body.shape
+                if (bodyShape is VoxelShape) {
+                    for (voxelPos in bodyShape.voxels) {
+                        GL11.glPushMatrix()
+                        GL11.glTranslatef(voxelPos.x().toFloat(), voxelPos.y().toFloat(), voxelPos.z().toFloat())
+                        renderCube()
+                        GL11.glPopMatrix()
+                    }
+                }
                 GL11.glPopMatrix()
             }
 

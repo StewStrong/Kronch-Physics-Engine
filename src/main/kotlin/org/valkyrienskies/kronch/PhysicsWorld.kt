@@ -2,9 +2,9 @@ package org.valkyrienskies.kronch
 
 import org.joml.Quaterniond
 import org.joml.Vector3d
-import org.joml.primitives.AABBd
+import org.joml.Vector3i
 import org.valkyrienskies.kronch.JointType.SPHERICAL
-import org.valkyrienskies.kronch.collision.shapes.BoxCollisionShape
+import org.valkyrienskies.kronch.collision.shapes.VoxelShape
 
 class PhysicsWorld {
     val bodies: MutableList<Body> = ArrayList()
@@ -14,25 +14,33 @@ class PhysicsWorld {
         // region Create bodies
         val boxSize = Vector3d(1.0, 1.0, 1.0)
 
+        val singleVoxelShape = VoxelShape(listOf(Vector3i()))
+
         val firstBoxPose = Pose(Vector3d(0.0, 3.0, 2.0), Quaterniond())
         val firstBoxBody = Body(firstBoxPose)
         firstBoxBody.setBox(boxSize)
-        firstBoxBody.collisionShape = BoxCollisionShape(AABBd(-.5, -.5, -.5, .5, .5, .5))
+        firstBoxBody.shape = singleVoxelShape
 
         val secondBoxPose = Pose(Vector3d(.8, 1.0, 0.1), Quaterniond())
         val secondBoxBody = Body(secondBoxPose)
         secondBoxBody.setBox(boxSize)
-        secondBoxBody.collisionShape = BoxCollisionShape(AABBd(-.5, -.5, -.5, .5, .5, .5))
+        secondBoxBody.shape = singleVoxelShape
 
         val thirdBoxPose = Pose(Vector3d(0.1, 5.0, 0.2), Quaterniond())
         val thirdBoxBody = Body(thirdBoxPose)
         thirdBoxBody.setBox(boxSize)
-        thirdBoxBody.collisionShape = BoxCollisionShape(AABBd(-.5, -.5, -.5, .5, .5, .5))
+        thirdBoxBody.shape = singleVoxelShape
 
-        val groundPose = Pose()
+        val groundBodyVoxels = ArrayList<Vector3i>()
+        for (x in -10..10) {
+            for (z in -10..10) {
+                groundBodyVoxels.add(Vector3i(x, 0, z))
+            }
+        }
+        val groundPose = Pose(Vector3d(0.0, -5.0, 0.0))
         val groundBody = Body(groundPose)
         groundBody.setBox(boxSize)
-        groundBody.collisionShape = BoxCollisionShape(AABBd(-1000.0, -10.0, -1000.0, 1000.0, 0.0, 1000.0))
+        groundBody.shape = VoxelShape(groundBodyVoxels)
         groundBody.isStatic = true
 
         // thirdBoxBody.vel.set(10.0, 0.0, 0.0)

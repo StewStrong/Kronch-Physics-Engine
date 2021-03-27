@@ -3,9 +3,10 @@ package org.valkyrienskies.kronch
 import org.joml.Quaterniond
 import org.joml.Vector3d
 import org.joml.Vector3dc
-import org.joml.primitives.AABBd
-import org.valkyrienskies.kronch.collision.colliders.BoxBoxCollider
-import org.valkyrienskies.kronch.collision.shapes.BoxCollisionShape
+import org.valkyrienskies.kronch.collision.colliders.VoxelVoxelCollider
+import org.valkyrienskies.kronch.collision.shapes.BoxShape
+import org.valkyrienskies.kronch.collision.shapes.CollisionShape
+import org.valkyrienskies.kronch.collision.shapes.VoxelShape
 import kotlin.math.asin
 
 // pretty much one-for-one port of https://github.com/matthias-research/pages/blob/master/challenges/PBD.js
@@ -86,7 +87,7 @@ class Body(_pose: Pose) {
     var isStatic = false
 
     // Use a box shape by default
-    var collisionShape: BoxCollisionShape = BoxCollisionShape(AABBd(-.5, -.5, -.5, .5, .5, .5))
+    var shape: CollisionShape = BoxShape(Vector3d(.5, .5, .5))
 
     fun setBox(size: Vector3d, density: Double = 1.0) {
         var mass = size.x * size.y * size.z * density
@@ -466,11 +467,12 @@ private fun solveCollisions(bodies: List<Body>, dt: Double) {
                 continue // Both bodies are static, don't bother to collide with both of them
             }
 
-            val collisionResult = BoxBoxCollider.computeCollisionBetweenShapes(
-                body0.collisionShape, body0.pose, body1.collisionShape, body1.pose
+            // For now assume both shapes are voxel shapes
+            val collisionResult = VoxelVoxelCollider.computeCollisionBetweenShapes(
+                body0.shape as VoxelShape, body0.pose, body1.shape as VoxelShape, body1.pose
             )
 
-            if (collisionResult.colliding) {
+            if (collisionResult != null && collisionResult.colliding) {
                 collisionResult.collisionPoints.forEach {
                     val corr = Vector3d(it.positionInSecondBody).sub(it.positionInFirstBody)
                     if (corr.lengthSquared() > 1e-10) {
