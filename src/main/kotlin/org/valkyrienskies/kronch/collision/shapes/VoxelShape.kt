@@ -129,7 +129,7 @@ class VoxelShape(
             return
         }
         forEachNormal { normalX: Int, normalY: Int, normalZ: Int ->
-            if (voxelType.canPush(getCollisionVoxelType(posX + normalX, posY + normalY, posZ + normalZ))) {
+            if (getCollisionVoxelType(posX - normalX, posY - normalY, posZ - normalZ).canPush(voxelType)) {
                 function(normalX.toDouble(), normalY.toDouble(), normalZ.toDouble())
             }
         }

@@ -7,6 +7,7 @@ import org.valkyrienskies.kronch.collision.colliders.VoxelVoxelCollider
 import org.valkyrienskies.kronch.collision.shapes.BoxShape
 import org.valkyrienskies.kronch.collision.shapes.CollisionShape
 import org.valkyrienskies.kronch.collision.shapes.VoxelShape
+import kotlin.math.abs
 import kotlin.math.asin
 
 // pretty much one-for-one port of https://github.com/matthias-research/pages/blob/master/challenges/PBD.js
@@ -480,6 +481,9 @@ private fun solveCollisions(bodies: List<Body>, dt: Double) {
                     val corr = it.normal.mul(it.depth, Vector3d())
                     val body0PointPos = body0.pose.transform(Vector3d(it.positionInFirstBody))
                     val body1PointPos = body1.pose.transform(Vector3d(it.positionInSecondBody))
+                    if (abs(it.depth) > .1) {
+                        println("error")
+                    }
                     if (corr.lengthSquared() > 1e-10) {
                         applyBodyPairCorrection(
                             body0, body1, corr, 0.0, dt,

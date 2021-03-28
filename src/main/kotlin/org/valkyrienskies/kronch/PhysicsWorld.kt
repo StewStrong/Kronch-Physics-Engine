@@ -14,6 +14,19 @@ class PhysicsWorld {
         // region Create bodies
         val boxSize = Vector3d(1.0, 1.0, 1.0)
 
+        val groundBodyVoxels = ArrayList<Vector3i>()
+        for (x in -10..10) {
+            for (z in -10..10) {
+                groundBodyVoxels.add(Vector3i(x, 0, z))
+            }
+        }
+
+        for (x in -2..2) {
+            for (z in -2..2) {
+                groundBodyVoxels.add(Vector3i(x, 1, z))
+            }
+        }
+
         val singleVoxelShape = VoxelShape(listOf(Vector3i()))
 
         val firstBoxPose = Pose(Vector3d(0.0, 3.0, 0.0), Quaterniond())
@@ -21,7 +34,7 @@ class PhysicsWorld {
         firstBoxBody.setBox(boxSize)
         firstBoxBody.shape = singleVoxelShape
 
-        val secondBoxPose = Pose(Vector3d(0.0, 1.0, 0.0), Quaterniond())
+        val secondBoxPose = Pose(Vector3d(0.0, 7.0, 0.0), Quaterniond())
         val secondBoxBody = Body(secondBoxPose)
         secondBoxBody.setBox(boxSize)
         secondBoxBody.shape = singleVoxelShape
@@ -31,13 +44,7 @@ class PhysicsWorld {
         thirdBoxBody.setBox(boxSize)
         thirdBoxBody.shape = singleVoxelShape
 
-        val groundBodyVoxels = ArrayList<Vector3i>()
-        for (x in -10..10) {
-            for (z in -10..10) {
-                groundBodyVoxels.add(Vector3i(x, 0, z))
-            }
-        }
-        val groundPose = Pose(Vector3d(0.0, 0.0, 0.0))
+        val groundPose = Pose(Vector3d(0.0, 0.0, 0.0), Quaterniond().rotateAxis(Math.toRadians(10.0), 0.0, 1.0, 1.0))
         val groundBody = Body(groundPose)
         groundBody.setBox(boxSize)
         groundBody.shape = VoxelShape(groundBodyVoxels)
@@ -82,7 +89,7 @@ class PhysicsWorld {
         bodies.add(groundBody)
         bodies.add(firstBoxBody)
         // bodies.add(secondBoxBody)
-        bodies.add(thirdBoxBody)
+        // bodies.add(thirdBoxBody)
 
         // joints.add(firstBoxToCeilingJoint)
         // joints.add(firstBoxToSecondBoxJoint)

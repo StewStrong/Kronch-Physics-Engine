@@ -57,41 +57,50 @@ object VoxelVoxelCollider : Collider<VoxelShape, VoxelShape> {
                         return@run
                     }
 
-                    var colliding = true // Initially assume colliding
+                    var colliding = false // Initially not colliding
                     val minNormal = Vector3d()
                     var minCollisionDepth = Double.POSITIVE_INFINITY
+                    val collisionPos = Vector3d()
 
                     body0Shape.forEachAllowedNormal(
                         gridX, gridY, gridZ
                     ) { normalX: Double, normalY: Double, normalZ: Double ->
-                        run {
+                        run TestNormal@{
                             val normalProjection =
                                 pointPosInBody0Coordinates.dot(
                                     normalX, normalY, normalZ
                                 ) - (gridX * normalX + gridY * normalY + gridZ * normalZ)
 
+                            val penetrationIntoVoxelSignedDistance = normalProjection + .25
+
                             val signedDistance: Double = when (voxelType) {
                                 PROXIMITY -> {
-                                    normalProjection
+                                    penetrationIntoVoxelSignedDistance
                                 }
                                 SURFACE -> {
-                                    normalProjection - 1
+                                    penetrationIntoVoxelSignedDistance - 1
                                 }
                                 INTERIOR -> {
-                                    normalProjection - 2
+                                    penetrationIntoVoxelSignedDistance - 2
                                 }
                                 else -> 0.0
                             }
 
                             if (signedDistance > 0) {
                                 // No collision
-                                colliding = false
-                                return@forEachAllowedNormal
+                                return@TestNormal
                             }
+
+                            colliding = true
 
                             if (abs(signedDistance) < abs(minCollisionDepth)) {
                                 minCollisionDepth = signedDistance
                                 minNormal.set(normalX, normalY, normalZ)
+                                collisionPos.set(pointPosInBody0Coordinates).add(
+                                    penetrationIntoVoxelSignedDistance * normalX,
+                                    penetrationIntoVoxelSignedDistance * normalY,
+                                    penetrationIntoVoxelSignedDistance * normalZ
+                                )
                             }
                         }
                     }
@@ -105,12 +114,18 @@ object VoxelVoxelCollider : Collider<VoxelShape, VoxelShape> {
                         return@run
                     }
 
+                    if (abs(minCollisionDepth) > .01) {
+                        println("error")
+                    }
+
                     // Put everything in global coordinates
-                    val body0CollisionPoint = Vector3d(gridX.toDouble(), gridY.toDouble(), gridZ.toDouble())
+
                     val body1CollisionPoint =
                         body1Transform.invTransform(body0Transform.transform(Vector3d(pointPosInBody0Coordinates)))
                     val collisionNormal = body0Transform.rotate(Vector3d(minNormal))
                     val collisionDepth = minCollisionDepth
+
+                    val body0CollisionPoint = collisionPos
 
                     val collisionPair =
                         CollisionPair(body0CollisionPoint, body1CollisionPoint, collisionNormal, collisionDepth)
