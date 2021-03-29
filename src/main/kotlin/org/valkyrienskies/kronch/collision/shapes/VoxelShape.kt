@@ -59,33 +59,35 @@ class VoxelShape(
         }
 
         // Update neighbors
-        for (xOffset in -1..1) {
-            for (yOffset in -1..1) {
-                for (zOffset in -1..1) {
-                    if (xOffset == 0 && yOffset == 0 && zOffset == 0) continue // Skip
-                    val neighborX = posX + xOffset
-                    val neighborY = posY + yOffset
-                    val neighborZ = posZ + zOffset
-                    if (!isPosInGrid(neighborX, neighborY, neighborZ)) continue // Skip
-                    val neighborDataIndex = toIndex(neighborX, neighborY, neighborZ)
-                    val neighborOldData = grid[neighborDataIndex]
+        forEachNeighbor(posX, posY, posZ) { neighborX: Int, neighborY: Int, neighborZ: Int ->
+            run {
+                if (!isPosInGrid(neighborX, neighborY, neighborZ)) return@run // Skip
+                val neighborDataIndex = toIndex(neighborX, neighborY, neighborZ)
+                val neighborOldData = grid[neighborDataIndex]
 
-                    val neighborOldCount =
-                        neighborOldData.toInt() shr 1 // Convert to int because kotlin shifts dont work on bytes :(
+                val neighborOldCount =
+                    neighborOldData.toInt() shr 1 // Convert to int because kotlin shifts dont work on bytes :(
 
-                    val neighborNewCount: Int = if (newVoxelType == FULL) {
-                        neighborOldCount + 1
-                    } else {
-                        neighborOldCount - 1
-                    }
-
-                    val neighborNewData = (neighborOldData and 0b00000001.toByte()) or (neighborNewCount shl 1).toByte()
-                    grid[neighborDataIndex] = neighborNewData
+                val neighborNewCount: Int = if (newVoxelType == FULL) {
+                    neighborOldCount + 1
+                } else {
+                    neighborOldCount - 1
                 }
+
+                val neighborNewData = (neighborOldData and 0b00000001.toByte()) or (neighborNewCount shl 1).toByte()
+                grid[neighborDataIndex] = neighborNewData
             }
         }
 
         return true // Something changed
+    }
+
+    private inline fun forEachNeighbor(
+        posX: Int, posY: Int, posZ: Int, function: (neighborX: Int, neighborY: Int, neighborZ: Int) -> Unit
+    ) {
+        forEachNormal { normalX, normalY, normalZ ->
+            function(posX + normalX, posY + normalY, posZ + normalZ)
+        }
     }
 
     private fun getVoxelType(posX: Int, posY: Int, posZ: Int): VoxelType {
@@ -113,7 +115,7 @@ class VoxelShape(
                 PROXIMITY
             }
         } else {
-            if (neighborVoxelCount != 26) {
+            if (neighborVoxelCount != 6) {
                 SURFACE
             } else {
                 INTERIOR

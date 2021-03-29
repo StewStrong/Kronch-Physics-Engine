@@ -57,9 +57,7 @@ object VoxelVoxelCollider : Collider<VoxelShape, VoxelShape> {
                         return@run
                     }
 
-                    var colliding = false // Initially not colliding
                     val minNormal = Vector3d()
-                    var minCollisionDepth = Double.POSITIVE_INFINITY
                     val collisionPos = Vector3d()
 
                     body0Shape.forEachAllowedNormal(
@@ -91,45 +89,31 @@ object VoxelVoxelCollider : Collider<VoxelShape, VoxelShape> {
                                 return@TestNormal
                             }
 
-                            colliding = true
+                            minNormal.set(normalX, normalY, normalZ)
+                            collisionPos.set(pointPosInBody0Coordinates).add(
+                                penetrationIntoVoxelSignedDistance * normalX,
+                                penetrationIntoVoxelSignedDistance * normalY,
+                                penetrationIntoVoxelSignedDistance * normalZ
+                            )
 
-                            if (abs(signedDistance) < abs(minCollisionDepth)) {
-                                minCollisionDepth = signedDistance
-                                minNormal.set(normalX, normalY, normalZ)
-                                collisionPos.set(pointPosInBody0Coordinates).add(
-                                    penetrationIntoVoxelSignedDistance * normalX,
-                                    penetrationIntoVoxelSignedDistance * normalY,
-                                    penetrationIntoVoxelSignedDistance * normalZ
-                                )
+                            if (abs(signedDistance) > .01) {
+                                println("error")
                             }
+
+                            val body1CollisionPoint =
+                                body1Transform.invTransform(
+                                    body0Transform.transform(Vector3d(pointPosInBody0Coordinates))
+                                )
+                            val collisionNormal = body0Transform.rotate(Vector3d(minNormal))
+                            val collisionDepth = signedDistance
+
+                            val body0CollisionPoint = Vector3d(collisionPos)
+
+                            val collisionPair =
+                                CollisionPair(body0CollisionPoint, body1CollisionPoint, collisionNormal, collisionDepth)
+                            collisionPairs.add(collisionPair)
                         }
                     }
-
-                    if (!colliding) {
-                        return@run
-                    }
-
-                    if (minCollisionDepth == Double.POSITIVE_INFINITY) {
-                        // No collision
-                        return@run
-                    }
-
-                    if (abs(minCollisionDepth) > .01) {
-                        println("error")
-                    }
-
-                    // Put everything in global coordinates
-
-                    val body1CollisionPoint =
-                        body1Transform.invTransform(body0Transform.transform(Vector3d(pointPosInBody0Coordinates)))
-                    val collisionNormal = body0Transform.rotate(Vector3d(minNormal))
-                    val collisionDepth = minCollisionDepth
-
-                    val body0CollisionPoint = collisionPos
-
-                    val collisionPair =
-                        CollisionPair(body0CollisionPoint, body1CollisionPoint, collisionNormal, collisionDepth)
-                    collisionPairs.add(collisionPair)
                 }
             }
         }
