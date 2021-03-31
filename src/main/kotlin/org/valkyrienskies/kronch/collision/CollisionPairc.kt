@@ -9,5 +9,5 @@ interface CollisionPairc {
     val positionInFirstBody: Vector3dc
     val positionInSecondBody: Vector3dc
     val normal: Vector3dc
-    val depth: Double
+    var used: Boolean
 }

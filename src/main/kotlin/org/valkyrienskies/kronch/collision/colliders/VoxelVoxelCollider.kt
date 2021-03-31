@@ -104,13 +104,12 @@ object VoxelVoxelCollider : Collider<VoxelShape, VoxelShape> {
                                 body1Transform.invTransform(
                                     body0Transform.transform(Vector3d(pointPosInBody0Coordinates))
                                 )
-                            val collisionNormal = body0Transform.rotate(Vector3d(minNormal))
-                            val collisionDepth = signedDistance
+                            val collisionNormal = body0Transform.rotate(Vector3d(minNormal)).mul(-1.0)
 
                             val body0CollisionPoint = Vector3d(collisionPos)
 
                             val collisionPair =
-                                CollisionPair(body0CollisionPoint, body1CollisionPoint, collisionNormal, collisionDepth)
+                                CollisionPair(body0CollisionPoint, body1CollisionPoint, collisionNormal)
                             collisionPairs.add(collisionPair)
                         }
                     }

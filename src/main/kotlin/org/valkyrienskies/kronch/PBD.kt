@@ -482,7 +482,11 @@ private fun correctRestitution(collisions: List<CollisionData>, dt: Double) {
     collisions.forEach { collision ->
         with(collision) {
             collisionResult.collisionPoints.forEach { collisionContact ->
-                with(collisionContact) {
+                with(collisionContact) collisionContact@{
+                    if (!used) {
+                        // If this contact wasn't used, then it didn't effect velocity so we don't need to correct anything
+                        return@collisionContact
+                    }
                     // For each collision contact, set the relative velocity of the collision points on both bodies to 0
                     val body0CollisionPosInGlobal = body0.pose.transform(Vector3d(positionInFirstBody))
                     val body1CollisionPosInGlobal = body1.pose.transform(Vector3d(positionInSecondBody))
@@ -490,11 +494,11 @@ private fun correctRestitution(collisions: List<CollisionData>, dt: Double) {
                     val body0VelocityAtPoint = body0.getVelocityAt(body0CollisionPosInGlobal)
                     val body1VelocityAtPoint = body1.getVelocityAt(body1CollisionPosInGlobal)
 
-                    val relativeVelocity = body1VelocityAtPoint.sub(body0VelocityAtPoint, Vector3d())
+                    val relativeVelocity = body0VelocityAtPoint.sub(body1VelocityAtPoint, Vector3d())
 
                     val relativeVelocityAlongNormal = normal.dot(relativeVelocity)
 
-                    val deltaVelocity = normal.mul(relativeVelocityAlongNormal, Vector3d())
+                    val deltaVelocity = normal.mul(-relativeVelocityAlongNormal, Vector3d())
 
                     if (abs(relativeVelocityAlongNormal) > 10.0) {
                         println("error")
@@ -510,7 +514,7 @@ private fun correctRestitution(collisions: List<CollisionData>, dt: Double) {
                     val body0VelocityAtPointFinal = body0.getVelocityAt(body0CollisionPosInGlobal)
                     val body1VelocityAtPointFinal = body1.getVelocityAt(body1CollisionPosInGlobal)
 
-                    val relativeVelocityFinal = body1VelocityAtPointFinal.sub(body0VelocityAtPointFinal, Vector3d())
+                    val relativeVelocityFinal = body0VelocityAtPointFinal.sub(body1VelocityAtPointFinal, Vector3d())
 
                     val relativeVelocityAlongNormalFinal = normal.dot(relativeVelocityFinal)
 
@@ -528,18 +532,30 @@ private fun resolveCollisions(collisions: List<CollisionData>, dt: Double) {
     collisions.forEach { collision ->
         with(collision) {
             collisionResult.collisionPoints.forEach { collisionContact ->
-                with(collisionContact) {
-                    val corr = normal.mul(depth, Vector3d())
-                    val body0PointPos = body0.pose.transform(Vector3d(positionInFirstBody))
-                    val body1PointPos = body1.pose.transform(Vector3d(positionInSecondBody))
-                    if (abs(depth) > .005) {
+                with(collisionContact) collisionContact@{
+                    val body0PointPosInGlobal = body0.pose.transform(Vector3d(positionInFirstBody))
+                    val body1PointPosInGlobal = body1.pose.transform(Vector3d(positionInSecondBody))
+
+                    val positionDifference = body0PointPosInGlobal.sub(body1PointPosInGlobal, Vector3d())
+                    val d = normal.dot(positionDifference)
+
+                    if (d < 0) {
+                        // No longer colliding, skip this contact
+                        return@collisionContact
+                    }
+
+                    val corr = normal.mul(d, Vector3d())
+
+                    if (abs(d) > .005) {
                         println("error")
                     }
                     if (corr.lengthSquared() > 1e-10) {
                         applyBodyPairCorrection(
                             body0, body1, corr, 0.0, dt,
-                            body0PointPos, body1PointPos, false
+                            body0PointPosInGlobal, body1PointPosInGlobal, false
                         )
+
+                        used = true
                     }
                 }
             }
