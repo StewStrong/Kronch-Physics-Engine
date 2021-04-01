@@ -1,25 +1,82 @@
 package org.valkyrienskies.kronch.collision.shapes
 
-import org.joml.Vector3d
 import org.joml.primitives.AABBdc
+import org.valkyrienskies.kronch.collision.colliders.CollisionRange
+import kotlin.math.max
+import kotlin.math.min
 
 /**
- * Return a view of the points in this box
- *
- * The returned [Vector3d], [temp], is mutated whenever the list accessed, take care.
+ * Iterate over every point in a [AABBdc]
  */
-fun AABBdc.boxPoints(temp: Vector3d = Vector3d()): List<Vector3d> = object : AbstractList<Vector3d>() {
-    override val size: Int = 8
-
-    override fun get(index: Int) = when (index) {
-        0 -> temp.set(minX(), minY(), minZ())
-        1 -> temp.set(minX(), minY(), maxZ())
-        2 -> temp.set(minX(), maxY(), minZ())
-        3 -> temp.set(minX(), maxY(), maxZ())
-        4 -> temp.set(maxX(), minY(), minZ())
-        5 -> temp.set(maxX(), minY(), maxZ())
-        6 -> temp.set(maxX(), maxY(), minZ())
-        7 -> temp.set(maxX(), maxY(), maxZ())
-        else -> throw IndexOutOfBoundsException("Index: $index")
+fun AABBdc.forEachBoxPoint(function: (posX: Double, posY: Double, posZ: Double) -> Unit) {
+    for (i in 0 until 8) {
+        var posX = 0.0
+        var posY = 0.0
+        var posZ = 0.0
+        when (i) {
+            0 -> {
+                posX = minX()
+                posY = minY()
+                posZ = minZ()
+            }
+            1 -> {
+                posX = minX()
+                posY = minY()
+                posZ = maxZ()
+            }
+            2 -> {
+                posX = minX()
+                posY = maxY()
+                posZ = minZ()
+            }
+            3 -> {
+                posX = minX()
+                posY = maxY()
+                posZ = maxZ()
+            }
+            4 -> {
+                posX = maxX()
+                posY = minY()
+                posZ = minZ()
+            }
+            5 -> {
+                posX = maxX()
+                posY = minY()
+                posZ = maxZ()
+            }
+            6 -> {
+                posX = maxX()
+                posY = maxY()
+                posZ = minZ()
+            }
+            7 -> {
+                posX = maxX()
+                posY = maxY()
+                posZ = maxZ()
+            }
+        }
+        function(posX, posY, posZ)
     }
+}
+
+fun getProjectionAlongAxis(
+    aabb: AABBdc, normalX: Double, normalY: Double, normalZ: Double, output: CollisionRange
+): CollisionRange {
+    var minProjection = Double.POSITIVE_INFINITY
+    var maxProjection = Double.NEGATIVE_INFINITY
+
+    aabb.forEachBoxPoint { posX, posY, posZ ->
+        val projection = dotProduct(normalX, normalY, normalZ, posX, posY, posZ)
+        minProjection = min(minProjection, projection)
+        maxProjection = max(maxProjection, projection)
+    }
+
+    output.min = minProjection
+    output.max = maxProjection
+
+    return output
+}
+
+fun dotProduct(aX: Double, aY: Double, aZ: Double, bX: Double, bY: Double, bZ: Double): Double {
+    return aX * bX + aY * bY + aZ * bZ
 }
