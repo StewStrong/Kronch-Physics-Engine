@@ -8,7 +8,9 @@ import org.valkyrienskies.kronch.collision.colliders.VoxelVoxelCollider
 import org.valkyrienskies.kronch.collision.shapes.BoxShape
 import org.valkyrienskies.kronch.collision.shapes.CollisionShape
 import org.valkyrienskies.kronch.collision.shapes.VoxelShape
+import kotlin.math.abs
 import kotlin.math.asin
+import kotlin.math.max
 
 // pretty much one-for-one port of https://github.com/matthias-research/pages/blob/master/challenges/PBD.js
 
@@ -207,6 +209,8 @@ class Body(_pose: Pose) {
             this.applyRotation(dq)
     }
 }
+
+private const val PAIR_CORRECTION_MIN_LENGTH = 1e-10
 
 fun applyBodyPairCorrection(
     body0: Body?, body1: Body?, corr: Vector3dc, compliance: Double,
@@ -491,14 +495,38 @@ private fun correctRestitution(collisions: List<CollisionData>, dt: Double) {
                     val body0CollisionPosInGlobal = body0.pose.transform(Vector3d(positionInFirstBody))
                     val body1CollisionPosInGlobal = body1.pose.transform(Vector3d(positionInSecondBody))
 
+                    // Compute the current velocity along normal
                     val body0VelocityAtPoint = body0.getVelocityAt(body0CollisionPosInGlobal)
                     val body1VelocityAtPoint = body1.getVelocityAt(body1CollisionPosInGlobal)
-
                     val relativeVelocity = body0VelocityAtPoint.sub(body1VelocityAtPoint, Vector3d())
-
                     val relativeVelocityAlongNormal = normal.dot(relativeVelocity)
 
-                    val deltaVelocity = normal.mul(-relativeVelocityAlongNormal, Vector3d())
+                    // Compute the previous velocity along normal
+                    val relativeVelocityAlongNormalPrev = if (abs(relativeVelocityAlongNormal) > 2 * 10.0 * dt) {
+                        val body0VelocityAtPointPrev = body0.getVelocityAt(body0CollisionPosInGlobal)
+                        val body1VelocityAtPointPrev = body1.getVelocityAt(body1CollisionPosInGlobal)
+                        val relativeVelocityPrev = body0VelocityAtPointPrev.sub(body1VelocityAtPointPrev, Vector3d())
+                        normal.dot(relativeVelocityPrev)
+                    } else {
+                        0.0
+                    }
+
+                    // For now, just make collisions perfectly elastic
+                    val coefficientOfRestitution = 1.0
+
+                    // [deltaVelocity] serves 2 purposes:
+                    // The first is to remove velocity added by [collision]
+                    // The second is to apply the coefficient of restitution to [collision]
+                    val deltaVelocity = normal.mul(
+                        -relativeVelocityAlongNormal +
+                            max(-coefficientOfRestitution * relativeVelocityAlongNormalPrev, 0.0),
+                        Vector3d()
+                    )
+
+                    if (deltaVelocity.length() < PAIR_CORRECTION_MIN_LENGTH) {
+                        // Small change, skip to avoid floating point error
+                        return@collisionContact
+                    }
 
                     applyBodyPairCorrection(
                         body0, body1, deltaVelocity, 0.0, 1.0, body0CollisionPosInGlobal, body1CollisionPosInGlobal,
@@ -524,7 +552,7 @@ private fun correctRestitution(collisions: List<CollisionData>, dt: Double) {
     }
 }
 
-private fun resolveCollisions(collisions: List<CollisionData>, dt: Double) {
+private fun resolveCollisions(collisions: List<CollisionData>, dt: Double, collisionCompliance: Double = 1e-5) {
     collisions.forEach { collision ->
         with(collision) {
             collisionResult.collisionPoints.forEach { collisionContact ->
@@ -535,22 +563,22 @@ private fun resolveCollisions(collisions: List<CollisionData>, dt: Double) {
                     val positionDifference = body0PointPosInGlobal.sub(body1PointPosInGlobal, Vector3d())
                     val d = normal.dot(positionDifference)
 
-                    if (d < 0) {
+                    if (d < PAIR_CORRECTION_MIN_LENGTH) {
                         // No longer colliding, skip this contact
+                        // Technically any d value > 0 is valid, but don't allow values that are too small (< PAIR_CORRECTION_MIN_LENGTH) to avoid floating point errors
                         return@collisionContact
                     }
 
                     val corr = normal.mul(d, Vector3d())
 
-                    if (corr.lengthSquared() > 1e-10) {
-                        // Compliance is set to 1e-6 to dampen collision forces. Setting it to 0 makes it too strong.
-                        applyBodyPairCorrection(
-                            body0, body1, corr, 1e-6, dt,
-                            body0PointPosInGlobal, body1PointPosInGlobal, false
-                        )
-
-                        used = true
-                    }
+                    // Compliance is set to [collisionCompliance] to dampen collision forces.
+                    // Setting it to 0 makes it too strong, setting it too high makes collisions mushy.
+                    // We use 1e-5 by default because its a good middle ground.
+                    applyBodyPairCorrection(
+                        body0, body1, corr, collisionCompliance, dt,
+                        body0PointPosInGlobal, body1PointPosInGlobal, false
+                    )
+                    used = true
                 }
             }
         }
