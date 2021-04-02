@@ -14,8 +14,6 @@ import org.lwjgl.system.MemoryUtil
 import org.valkyrienskies.kronch.PhysicsWorld
 import org.valkyrienskies.kronch.collision.shapes.VoxelShape
 import java.nio.FloatBuffer
-import kotlin.math.max
-import kotlin.math.min
 
 /**
  * Creates a window that renders using OpenGL. Based off of https://github.com/LWJGL/lwjgl3-demos/blob/79e81f6f3794c3dfd32ba0a31aefa69e56ad603b/src/org/lwjgl/demo/opengl/transform/LwjglDemo.java.
@@ -160,8 +158,9 @@ class OpenGLWindow {
             val diff = (thisTime - lastTime) / 1E9f
 
             // Run physics
-            physicsWorld.simulate(min(1.0 / 60.0, max(diff.toDouble(), .001)))
+            physicsWorld.simulate(1.0 / 60.0)
 
+            Thread.sleep(1000 / 60)
             // Compute some rotation angle.
 
             // Make the viewport always fill the whole window.

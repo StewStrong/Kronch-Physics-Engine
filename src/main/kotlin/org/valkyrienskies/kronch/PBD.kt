@@ -529,7 +529,7 @@ private fun correctRestitution(collisions: List<CollisionData>, dt: Double) {
                     }
 
                     applyBodyPairCorrection(
-                        body0, body1, deltaVelocity, 0.0, 1.0, body0CollisionPosInGlobal, body1CollisionPosInGlobal,
+                        body0, body1, deltaVelocity, 1e-6, dt, body0CollisionPosInGlobal, body1CollisionPosInGlobal,
                         true
                     )
 
@@ -552,7 +552,7 @@ private fun correctRestitution(collisions: List<CollisionData>, dt: Double) {
     }
 }
 
-private fun resolveCollisions(collisions: List<CollisionData>, dt: Double, collisionCompliance: Double = 1e-5) {
+private fun resolveCollisions(collisions: List<CollisionData>, dt: Double, collisionCompliance: Double = 1e-4) {
     collisions.forEach { collision ->
         with(collision) {
             collisionResult.collisionPoints.forEach { collisionContact ->
