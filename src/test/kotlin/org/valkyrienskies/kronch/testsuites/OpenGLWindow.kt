@@ -14,6 +14,8 @@ import org.lwjgl.system.MemoryUtil
 import org.valkyrienskies.kronch.PhysicsWorld
 import org.valkyrienskies.kronch.collision.shapes.VoxelShape
 import java.nio.FloatBuffer
+import kotlin.math.max
+import kotlin.math.min
 
 /**
  * Creates a window that renders using OpenGL. Based off of https://github.com/LWJGL/lwjgl3-demos/blob/79e81f6f3794c3dfd32ba0a31aefa69e56ad603b/src/org/lwjgl/demo/opengl/transform/LwjglDemo.java.
@@ -93,7 +95,8 @@ class OpenGLWindow {
 
     private fun renderCube() {
         GL11.glPushMatrix()
-        GL11.glScalef(.95f, .95f, .95f)
+        val scale = .99f
+        GL11.glScalef(scale, scale, scale)
         GL11.glBegin(GL11.GL_QUADS)
         GL11.glColor3f(0.0f, 0.0f, 0.2f)
         GL11.glVertex3f(0.5f, -0.5f, -0.5f)
@@ -150,7 +153,6 @@ class OpenGLWindow {
         GL11.glEnable(GL11.GL_CULL_FACE)
 
         // Remember the current time.
-        val firstTime = System.nanoTime()
         var lastTime = System.nanoTime()
         while (!GLFW.glfwWindowShouldClose(window)) {
             // Build time difference between this and first time.
@@ -158,7 +160,7 @@ class OpenGLWindow {
             val diff = (thisTime - lastTime) / 1E9f
 
             // Run physics
-            physicsWorld.simulate(.001) // diff.toDouble())
+            physicsWorld.simulate(min(1.0 / 60.0, max(diff.toDouble(), .001)))
 
             // Compute some rotation angle.
 

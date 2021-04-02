@@ -57,25 +57,24 @@ class PhysicsWorld {
         thirdBoxBody.setBox(boxSize)
         thirdBoxBody.shape = biggerVoxelShape
 
-        val groundPose = Pose(Vector3d(0.0, 0.0, 0.0), Quaterniond().rotateAxis(Math.toRadians(25.0), 0.0, 1.0, 1.0))
+        val groundPose = Pose(Vector3d(0.0, 0.0, 0.0), Quaterniond().rotateAxis(Math.toRadians(35.0), 0.0, 1.0, 1.0))
         val groundBody = Body(groundPose)
         groundBody.setBox(boxSize)
         groundBody.shape = VoxelShape(groundBodyVoxels)
         groundBody.isStatic = true
 
-        // thirdBoxBody.vel.set(10.0, 0.0, 0.0)
         // endregion
 
         // region Create joins
         val firstBoxToCeilingJoint =
             Joint(
-                SPHERICAL, null, firstBoxBody, Pose(Vector3d(0.0, 3.0, 0.0), Quaterniond()),
+                SPHERICAL, null, firstBoxBody, Pose(Vector3d(0.0, 4.5, 0.0), Quaterniond()),
                 Pose(Vector3d(0.5, .5, 0.5), Quaterniond())
             )
 
         val firstBoxToSecondBoxJoint =
             Joint(
-                SPHERICAL, firstBoxBody, secondBoxBody, Pose(Vector3d(0.5, -.5, 0.5), Quaterniond()),
+                SPHERICAL, firstBoxBody, secondBoxBody, Pose(Vector3d(-0.5, -.5, 0.5), Quaterniond()),
                 Pose(Vector3d(0.5, .5, 0.5), Quaterniond())
             )
 
