@@ -8,7 +8,6 @@ import org.valkyrienskies.kronch.collision.colliders.VoxelVoxelCollider
 import org.valkyrienskies.kronch.collision.shapes.BoxShape
 import org.valkyrienskies.kronch.collision.shapes.CollisionShape
 import org.valkyrienskies.kronch.collision.shapes.VoxelShape
-import kotlin.math.abs
 import kotlin.math.asin
 
 // pretty much one-for-one port of https://github.com/matthias-research/pages/blob/master/challenges/PBD.js
@@ -117,6 +116,7 @@ class Body(_pose: Pose) {
 
         val maxPhi = 0.5
         val phi = rot.length()
+
         if (phi * scale > maxRotationPerSubstep)
             scale = maxRotationPerSubstep / phi
 
@@ -500,10 +500,6 @@ private fun correctRestitution(collisions: List<CollisionData>, dt: Double) {
 
                     val deltaVelocity = normal.mul(-relativeVelocityAlongNormal, Vector3d())
 
-                    if (abs(relativeVelocityAlongNormal) > 10.0) {
-                        println("error")
-                    }
-
                     applyBodyPairCorrection(
                         body0, body1, deltaVelocity, 0.0, 1.0, body0CollisionPosInGlobal, body1CollisionPosInGlobal,
                         true
@@ -546,12 +542,10 @@ private fun resolveCollisions(collisions: List<CollisionData>, dt: Double) {
 
                     val corr = normal.mul(d, Vector3d())
 
-                    if (abs(d) > .005) {
-                        println("error")
-                    }
                     if (corr.lengthSquared() > 1e-10) {
+                        // Compliance is set to 1e-6 to dampen collision forces. Setting it to 0 makes it too strong.
                         applyBodyPairCorrection(
-                            body0, body1, corr, 0.0, dt,
+                            body0, body1, corr, 1e-6, dt,
                             body0PointPosInGlobal, body1PointPosInGlobal, false
                         )
 

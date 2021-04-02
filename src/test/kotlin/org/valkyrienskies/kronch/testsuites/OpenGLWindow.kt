@@ -92,6 +92,8 @@ class OpenGLWindow {
     }
 
     private fun renderCube() {
+        GL11.glPushMatrix()
+        GL11.glScalef(.95f, .95f, .95f)
         GL11.glBegin(GL11.GL_QUADS)
         GL11.glColor3f(0.0f, 0.0f, 0.2f)
         GL11.glVertex3f(0.5f, -0.5f, -0.5f)
@@ -124,6 +126,7 @@ class OpenGLWindow {
         GL11.glVertex3f(-0.5f, -0.5f, 0.5f)
         GL11.glVertex3f(-0.5f, -0.5f, -0.5f)
         GL11.glEnd()
+        GL11.glPopMatrix()
     }
 
     // Renders a plane from (-.5, 0, -.5) to (.5, 0, .5)

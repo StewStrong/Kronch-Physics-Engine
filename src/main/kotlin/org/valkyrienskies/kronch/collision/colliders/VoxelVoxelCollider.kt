@@ -94,24 +94,21 @@ object VoxelVoxelCollider : Collider<VoxelShape, VoxelShape> {
 
                                 if (minDepth == Double.MAX_VALUE) continue // No collision
 
-                                if (minDepth > .01) {
-                                    println("error")
-                                }
-
-                                // println("collision")
                                 val body1CollisionPointInBody0Coordinates =
-                                    Vector3d(pointPosInBody0Coordinates).fma(-.25, minNormal)
+                                    Vector3d(pointPosInBody0Coordinates) // .fma(-.25, minNormal)
                                 val body0CollisionPointInBody0Coordinates =
-                                    Vector3d(body1CollisionPointInBody0Coordinates).fma(minDepth, minNormal)
-
-                                val body1CollisionPointInBody1Coordinates = body1Transform.invTransform(
-                                    body0Transform.transform(Vector3d(body0CollisionPointInBody0Coordinates))
-                                )
+                                    Vector3d(body1CollisionPointInBody0Coordinates).fma(-minDepth, minNormal)
 
                                 val normalInGlobalCoordinates = body0Transform.rotate(Vector3d(minNormal)).mul(-1.0)
 
+                                val body1CollisionPointInBody1Coordinates = body1Transform.invTransform(
+                                    body0Transform.transform(
+                                        Vector3d(body1CollisionPointInBody0Coordinates)
+                                    )
+                                )
+
                                 val collisionPair = CollisionPair(
-                                    body1CollisionPointInBody0Coordinates, body1CollisionPointInBody1Coordinates,
+                                    body0CollisionPointInBody0Coordinates, body1CollisionPointInBody1Coordinates,
                                     normalInGlobalCoordinates
                                 )
 

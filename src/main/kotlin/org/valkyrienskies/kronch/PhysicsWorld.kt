@@ -3,6 +3,7 @@ package org.valkyrienskies.kronch
 import org.joml.Quaterniond
 import org.joml.Vector3d
 import org.joml.Vector3i
+import org.joml.Vector3ic
 import org.valkyrienskies.kronch.JointType.SPHERICAL
 import org.valkyrienskies.kronch.collision.shapes.VoxelShape
 
@@ -14,7 +15,7 @@ class PhysicsWorld {
         // region Create bodies
         val boxSize = Vector3d(1.0, 1.0, 1.0)
 
-        val groundBodyVoxels = ArrayList<Vector3i>()
+        val groundBodyVoxels = ArrayList<Vector3ic>()
         for (x in -10..10) {
             for (z in -10..10) {
                 groundBodyVoxels.add(Vector3i(x, 0, z))
@@ -27,7 +28,19 @@ class PhysicsWorld {
             }
         }
 
+        groundBodyVoxels.add(Vector3i(0, 2, 0))
+
         val singleVoxelShape = VoxelShape(listOf(Vector3i()))
+
+        val biggerShapeVoxels = ArrayList<Vector3ic>()
+
+        for (x in -1..1) {
+            for (z in -1..1) {
+                biggerShapeVoxels.add(Vector3i(x, 0, z))
+            }
+        }
+
+        val biggerVoxelShape = VoxelShape(biggerShapeVoxels)
 
         val firstBoxPose = Pose(Vector3d(0.0, 3.0, 0.0), Quaterniond())
         val firstBoxBody = Body(firstBoxPose)
@@ -42,9 +55,9 @@ class PhysicsWorld {
         val thirdBoxPose = Pose(Vector3d(0.0, 5.0, 0.0), Quaterniond())
         val thirdBoxBody = Body(thirdBoxPose)
         thirdBoxBody.setBox(boxSize)
-        thirdBoxBody.shape = singleVoxelShape
+        thirdBoxBody.shape = biggerVoxelShape
 
-        val groundPose = Pose(Vector3d(0.0, 0.0, 0.0), Quaterniond().rotateAxis(Math.toRadians(10.0), 0.0, 1.0, 1.0))
+        val groundPose = Pose(Vector3d(0.0, 0.0, 0.0), Quaterniond().rotateAxis(Math.toRadians(25.0), 0.0, 1.0, 1.0))
         val groundBody = Body(groundPose)
         groundBody.setBox(boxSize)
         groundBody.shape = VoxelShape(groundBodyVoxels)
@@ -62,13 +75,13 @@ class PhysicsWorld {
 
         val firstBoxToSecondBoxJoint =
             Joint(
-                SPHERICAL, firstBoxBody, secondBoxBody, Pose(Vector3d(0.5, -.5, 0.0), Quaterniond()),
+                SPHERICAL, firstBoxBody, secondBoxBody, Pose(Vector3d(0.5, -.5, 0.5), Quaterniond()),
                 Pose(Vector3d(0.5, .5, 0.5), Quaterniond())
             )
 
         val secondBoxToThirdBoxJoint =
             Joint(
-                SPHERICAL, secondBoxBody, thirdBoxBody, Pose(Vector3d(0.0, -.5, 0.0), Quaterniond()),
+                SPHERICAL, secondBoxBody, thirdBoxBody, Pose(Vector3d(-.5, -.5, -.5), Quaterniond()),
                 Pose(Vector3d(0.5, .5, 0.5), Quaterniond())
             )
 
@@ -88,17 +101,22 @@ class PhysicsWorld {
         // endregion
         bodies.add(groundBody)
         bodies.add(firstBoxBody)
-        // bodies.add(secondBoxBody)
-        // bodies.add(thirdBoxBody)
+        bodies.add(secondBoxBody)
+        bodies.add(thirdBoxBody)
 
-        // joints.add(firstBoxToCeilingJoint)
-        // joints.add(firstBoxToSecondBoxJoint)
-        // joints.add(secondBoxToThirdBoxJoint)
+        joints.add(firstBoxToCeilingJoint)
+        joints.add(firstBoxToSecondBoxJoint)
+        joints.add(secondBoxToThirdBoxJoint)
     }
 
     fun simulate(timeStep: Double) {
         val gravity = Vector3d(0.0, -10.0, 0.0)
         val numSubsteps = 40
         simulate(bodies, joints, timeStep, numSubsteps, gravity)
+
+        val groundBody = bodies[0]
+        groundBody.pose.q.rotateY(timeStep * Math.PI / 4.0)
+        groundBody.pose.q.normalize()
+        groundBody.quaternion.set(groundBody.pose.q)
     }
 }
