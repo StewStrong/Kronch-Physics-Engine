@@ -4,19 +4,22 @@ import org.joml.Matrix4d
 import org.joml.Quaterniond
 import org.joml.Vector3d
 import org.joml.Vector3dc
-import org.joml.primitives.AABBd
 import org.valkyrienskies.kronch.Pose
 import org.valkyrienskies.kronch.collision.CollisionPair
 import org.valkyrienskies.kronch.collision.CollisionPairc
 import org.valkyrienskies.kronch.collision.CollisionResult
 import org.valkyrienskies.kronch.collision.CollisionResultc
 import org.valkyrienskies.kronch.collision.shapes.VoxelShape
-import org.valkyrienskies.kronch.collision.shapes.VoxelShape.CollisionVoxelType.AIR
-import org.valkyrienskies.kronch.collision.shapes.VoxelShape.CollisionVoxelType.PROXIMITY
-import org.valkyrienskies.kronch.collision.shapes.getProjectionAlongAxis
+import org.valkyrienskies.kronch.collision.shapes.VoxelShape.CollisionVoxelType.SURFACE
+import kotlin.math.max
+import kotlin.math.min
 import kotlin.math.roundToInt
 
 object VoxelVoxelCollider : Collider<VoxelShape, VoxelShape> {
+
+    private const val POINT_SPACING = .25
+    private const val POINT_RADIUS = .25
+
     override fun computeCollisionBetweenShapes(
         body0Shape: VoxelShape, body0Transform: Pose, body1Shape: VoxelShape, body1Transform: Pose
     ): CollisionResultc {
@@ -35,84 +38,86 @@ object VoxelVoxelCollider : Collider<VoxelShape, VoxelShape> {
         body1To0Transform.rotate(body1Transform.q)
 
         for (surfaceVoxel in body1Shape.getSurfaceVoxels()) {
-            forEachCorner { xCorner: Int, yCorner: Int, zCorner: Int ->
-                run {
-                    val pointPosInBody1Coordinates: Vector3dc = Vector3d(
-                        surfaceVoxel.x() + xCorner * .25,
-                        surfaceVoxel.y() + yCorner * .25,
-                        surfaceVoxel.z() + zCorner * .25
+            forEachPointInCube(
+                surfaceVoxel.x(), surfaceVoxel.y(), surfaceVoxel.z()
+            ) forEachPointInBody1@{ pointX, pointY, pointZ ->
+                val pointPosInBody1Coordinates: Vector3dc = Vector3d(pointX, pointY, pointZ)
+
+                val pointPosInBody0Coordinates: Vector3dc = body0Transform.invTransform(
+                    body1Transform.transform(
+                        Vector3d(pointPosInBody1Coordinates)
                     )
-                    val pointPosInBody0Coordinates: Vector3dc =
-                        body1To0Transform.transformPosition(pointPosInBody1Coordinates, Vector3d())
+                )
 
-                    val pointSize = .25
+                val gridX = pointPosInBody0Coordinates.x().roundToInt()
+                val gridY = pointPosInBody0Coordinates.y().roundToInt()
+                val gridZ = pointPosInBody0Coordinates.z().roundToInt()
 
-                    val pointAsAABB = AABBd(
-                        pointPosInBody0Coordinates.x() - pointSize,
-                        pointPosInBody0Coordinates.y() - pointSize,
-                        pointPosInBody0Coordinates.z() - pointSize,
-                        pointPosInBody0Coordinates.x() + pointSize,
-                        pointPosInBody0Coordinates.y() + pointSize,
-                        pointPosInBody0Coordinates.z() + pointSize
-                    )
 
-                    for (gridX in pointAsAABB.minX.roundToInt()..pointAsAABB.maxX.roundToInt()) {
-                        for (gridY in pointAsAABB.minY.roundToInt()..pointAsAABB.maxY.roundToInt()) {
-                            for (gridZ in pointAsAABB.minZ.roundToInt()..pointAsAABB.maxZ.roundToInt()) {
-                                val voxelType = body0Shape.getCollisionVoxelType(gridX, gridY, gridZ)
-                                if (voxelType == AIR || voxelType == PROXIMITY) continue // skip
+                for (testColX in gridX - 1..gridX + 1) {
+                    for (testColY in gridY - 1..gridY + 1) {
+                        for (testColZ in gridZ - 1..gridZ + 1) {
+                            run forEachVoxel@{
+                                val voxelType = body0Shape.getCollisionVoxelType(testColX, testColY, testColZ)
 
-                                val minNormal = Vector3d()
-                                var minDepth = Double.MAX_VALUE
+                                if (voxelType != SURFACE) return@forEachVoxel // No collision
 
-                                val body1Voxel =
-                                    AABBd(gridX - .5, gridY - .5, gridZ - .5, gridX + .5, gridY + .5, gridZ + .5)
+                                val offsetX = pointPosInBody0Coordinates.x() - testColX
+                                val offsetY = pointPosInBody0Coordinates.y() - testColY
+                                val offsetZ = pointPosInBody0Coordinates.z() - testColZ
 
-                                body0Shape.forEachAllowedNormal(
-                                    gridX, gridY, gridZ
-                                ) { normalX: Double, normalY: Double, normalZ: Double ->
-                                    run forEachNormal@{
-                                        val point0AsBBRange = getProjectionAlongAxis(
-                                            pointAsAABB, normalX, normalY, normalZ, CollisionRange.create()
-                                        )
-                                        val body1VoxelAsRange = getProjectionAlongAxis(
-                                            body1Voxel, normalX, normalY, normalZ, CollisionRange.create()
-                                        )
+                                // The point on the box that is closest to the sphere
+                                val boxClosestPointRelative = Vector3d(offsetX, offsetY, offsetZ)
+                                val voxelSize: Vector3dc = Vector3d(.5, .5, .5)
 
-                                        val overlap = body1VoxelAsRange.max - point0AsBBRange.min
+                                boxClosestPointRelative.x = min(voxelSize.x(), boxClosestPointRelative.x())
+                                boxClosestPointRelative.x = max(-voxelSize.x(), boxClosestPointRelative.x())
+                                boxClosestPointRelative.y = min(voxelSize.y(), boxClosestPointRelative.y())
+                                boxClosestPointRelative.y = max(-voxelSize.y(), boxClosestPointRelative.y())
+                                boxClosestPointRelative.z = min(voxelSize.z(), boxClosestPointRelative.z())
+                                boxClosestPointRelative.z = max(-voxelSize.z(), boxClosestPointRelative.z())
 
-                                        if (overlap < 0) {
-                                            return@forEachNormal // No collision
-                                        }
+                                val boxClosestPointInBody0Coordinates: Vector3dc =
+                                    Vector3d(boxClosestPointRelative).add(
+                                        testColX.toDouble(), testColY.toDouble(), testColZ.toDouble()
+                                    )
 
-                                        if (overlap < minDepth) {
-                                            minDepth = overlap
-                                            minNormal.set(normalX, normalY, normalZ)
-                                        }
-                                    }
+                                val collisionNormal = Vector3d(offsetX, offsetY, offsetZ).sub(boxClosestPointRelative)
+
+                                val sphereRadius = .25
+
+                                if (collisionNormal.lengthSquared() > sphereRadius * sphereRadius) {
+                                    return@forEachVoxel // No collision
                                 }
 
-                                if (minDepth == Double.MAX_VALUE) continue // No collision
+                                if (collisionNormal.length() < 1e-12) return@forEachVoxel // We can't normalize the normal!
 
-                                val body1CollisionPointInBody0Coordinates =
-                                    Vector3d(pointPosInBody0Coordinates) // .fma(-.25, minNormal)
-                                val body0CollisionPointInBody0Coordinates =
-                                    Vector3d(body1CollisionPointInBody0Coordinates).fma(-minDepth, minNormal)
+                                val collisionDepth = sphereRadius - collisionNormal.length()
 
-                                val normalInGlobalCoordinates = body0Transform.rotate(Vector3d(minNormal)).mul(-1.0)
+                                collisionNormal.normalize()
+
+                                val body1CollisionPointInBody0Coordinates = Vector3d(pointPosInBody0Coordinates).sub(
+                                    collisionNormal.x() * sphereRadius, collisionNormal.y() * sphereRadius,
+                                    collisionNormal.z() * sphereRadius
+                                )
 
                                 val body1CollisionPointInBody1Coordinates = body1Transform.invTransform(
-                                    body0Transform.transform(
-                                        Vector3d(body1CollisionPointInBody0Coordinates)
+                                    body0Transform.transform(Vector3d(body1CollisionPointInBody0Coordinates))
+                                )
+
+                                val normalInGlobal = body0Transform.rotate(Vector3d(collisionNormal))
+
+                                // if (!boxClosestPointInBody0Coordinates.isFinite || !body1CollisionPointInBody1Coordinates.isFinite || !normalInGlobal.isFinite) {
+                                //     val bruh = 1
+                                // }
+
+                                collisionPairs.add(
+                                    CollisionPair(
+                                        boxClosestPointInBody0Coordinates, body1CollisionPointInBody1Coordinates,
+                                        normalInGlobal.mul(1.0, Vector3d()),
+                                        collisionDepth
                                     )
                                 )
-
-                                val collisionPair = CollisionPair(
-                                    body0CollisionPointInBody0Coordinates, body1CollisionPointInBody1Coordinates,
-                                    normalInGlobalCoordinates
-                                )
-
-                                collisionPairs.add(collisionPair)
                             }
                         }
                     }
@@ -120,7 +125,29 @@ object VoxelVoxelCollider : Collider<VoxelShape, VoxelShape> {
             }
         }
 
+        collisionPairs.sortBy { -it.originalDepth }
+
+        if (collisionPairs.size > 3) {
+            val i = 1
+        }
+
+        // Return up to 4 points
+        while (collisionPairs.size > 4) collisionPairs.removeLast()
+
         return CollisionResult(collisionPairs)
+    }
+
+    private inline fun forEachPointInCube(
+        voxelX: Int, voxelY: Int, voxelZ: Int, pointSpacing: Double = .25,
+        function: (pointX: Double, pointY: Double, pointZ: Double) -> Unit
+    ) {
+        forEachCorner { xCorner, yCorner, zCorner ->
+            function(
+                voxelX.toDouble() + xCorner * pointSpacing,
+                voxelY.toDouble() + yCorner * pointSpacing,
+                voxelZ.toDouble() + zCorner * pointSpacing
+            )
+        }
     }
 
     private inline fun forEachCorner(function: (xCorner: Int, yCorner: Int, zCorner: Int) -> Unit) {

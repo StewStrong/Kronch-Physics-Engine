@@ -9,5 +9,7 @@ class CollisionPair(
     override var positionInFirstBody: Vector3dc,
     override var positionInSecondBody: Vector3dc,
     override var normal: Vector3dc,
+    override var originalDepth: Double
+) : CollisionPairc {
     override var used: Boolean = false
-) : CollisionPairc
+}

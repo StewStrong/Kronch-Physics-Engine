@@ -11,7 +11,9 @@ import org.lwjgl.glfw.GLFWKeyCallback
 import org.lwjgl.opengl.GL
 import org.lwjgl.opengl.GL11
 import org.lwjgl.system.MemoryUtil
-import org.valkyrienskies.kronch.PhysicsWorld
+import org.valkyrienskies.kronch.PhysicsWorldVoxel
+import org.valkyrienskies.kronch.collision.shapes.PlaneShape
+import org.valkyrienskies.kronch.collision.shapes.SphereShape
 import org.valkyrienskies.kronch.collision.shapes.VoxelShape
 import java.nio.FloatBuffer
 
@@ -34,7 +36,7 @@ class OpenGLWindow {
     // FloatBuffer for transferring matrices to OpenGL
     private var floatBuffer: FloatBuffer = BufferUtils.createFloatBuffer(16)
 
-    private val physicsWorld = PhysicsWorld()
+    private val physicsWorld = PhysicsWorldVoxel()
 
     fun run() {
         try {
@@ -197,6 +199,19 @@ class OpenGLWindow {
                         renderCube()
                         GL11.glPopMatrix()
                     }
+                }
+                if (bodyShape is PlaneShape) {
+                    GL11.glPushMatrix()
+                    GL11.glScaled(10.0, 10.0, 10.0)
+                    renderPlane()
+                    GL11.glPopMatrix()
+                }
+                if (bodyShape is SphereShape) {
+                    GL11.glPushMatrix()
+                    val scale = bodyShape.radius / .5
+                    GL11.glScaled(scale, scale, scale)
+                    renderCube()
+                    GL11.glPopMatrix()
                 }
                 GL11.glPopMatrix()
             }
